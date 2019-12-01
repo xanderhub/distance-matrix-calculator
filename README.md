@@ -46,6 +46,22 @@ and __value__ - a distance between them:
 {C,D} -> 2.24
 ...
 ```
-class `PointsPair` represents unique pair - a key
-In concurrent environment, where each pair of points can be calculated in different thread we must guarantee thread safety. <br />
+class `PointsPair` represents unique pair - a key <br />
+<br />
+In concurrent environment, where each pair of points can be calculated in different thread we must guarantee thread safety.
 For this we can use Java's `ConcurrentMap` (see `DistanceMatrix` class implementation)
+
+### Calculation Task
+`CalcTask` is a simple *Runnable* task defined to calculatethe distance between two points (Point2D)
+It gets these two points, a reference to distance matrix provided by main thread and `CountDownLatch` for synchronization.
+Once this task calculates the distance it stores it in the distance matrix (*PointsPair* - as a key and *distance* - as a value)
+
+### Main Thread
+`DistanceCalculator` class has API method `calcDistanceMatrix()`, which can be called with defined amount of threads to run.
+An instance of DistanceCalculator utilizes a [ThreadPoolExecutor](https://docs.oracle.com/javase/7/docs/api/java/util/concurrent/ThreadPoolExecutor.html) which initialized with fixed amount of threads.
+But it can be changed by calling `calcDistanceMatrix()` with differnt amount of threads to execute. Once this method called, it starts to loop through the list of points, create unique pairs from these points, wraps them as `CalcTask`s and submits them to the *ThreadPoolExecutor*. Tasks that can't be processeed right away will be waiting in the queue, that comes with the Executor:
+
+![image](https://user-images.githubusercontent.com/33380175/69907561-b72c7400-13df-11ea-894c-0b7cd6fc353c.png)
+
+### Synchronization
+Since main thread returns a result to the client (distance matrix) it needs to know when it can return it, i.e. when all calculation tasks finished. One of the ways to let the main thread know that all its child threads has finished is by using `CountDownLatch` mechanism (https://www.baeldung.com/java-countdown-latch)
